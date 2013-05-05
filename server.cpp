@@ -1,5 +1,6 @@
 #include "helpers.h"
 #include <list>
+#include <sstream> 
 
 int containsClient(std::list<client> clients, char* name) {
 	for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
@@ -93,7 +94,8 @@ int main(int argc, char *argv[]) {
 						else { //recv intoarce >0
 							switch (buffer.type) {
 								case TYPE0 :
-									if (containsClient(clients,buffer.payload)) {
+								{
+									if (containsClient(clients,buffer.payload) == 0) {
 										// send disconnect message
 										memset(&buffer,0,sizeof(msg));
 										buffer.type = TYPE8;
@@ -108,6 +110,24 @@ int main(int argc, char *argv[]) {
 									time(&cli.time);
 									clients.push_front(cli);
 									break;
+								}
+								case TYPE1 :
+								{
+									// send list of clients
+									memset(&buffer,0,sizeof(msg));
+									buffer.type = TYPE1;
+									buffer.len = clients.size();
+									
+									std::stringstream buff;
+									for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
+										buff << (*it).name << " ";
+									}
+									
+									std::string mesaj = buff.str();
+									memcpy(buffer.payload,mesaj.c_str(),mesaj.size());
+									send(i, &buffer, sizeof(msg), 0);
+									break;
+								}
 							}
 					}
 				}

@@ -2,6 +2,7 @@
 #include <list>
 #include <stack>
 #include <sstream> 
+#include <queue>
 
 // ./client nume_client port_client ip_server port_server
 int main (int argc, char* argv[]) {
@@ -12,6 +13,7 @@ int main (int argc, char* argv[]) {
 	msg s;
 	fd_set read_fds;
     fd_set tmp_fds;
+    std::queue< std::pair<char*,char*> > outbox;
 	
 	if (argc != 5) {
 		printf("Usage: %s nume_client port_client ip_server port_server\n",argv[0]);
@@ -59,6 +61,7 @@ int main (int argc, char* argv[]) {
 				//citesc date de pe socket
 				memset(&s,0,sizeof(msg));
 				n = recv(sockfd,&s,sizeof(msg),0);
+				
 				if (s.type == TYPE8) {
 					printf("%s: I'm out!\n",argv[1]);
 					return 0;
@@ -86,7 +89,9 @@ int main (int argc, char* argv[]) {
 						char *pch = strtok(s.payload, " ");
 						printf("Client %s ",pch);
 						pch = strtok(NULL," ");
-						printf("listens on port %s ", pch);
+						printf("has the ip %s, ",pch);
+						pch = strtok(NULL, " ");
+						printf("listens on port %s, ", pch);
 						pch = strtok(NULL, " ");
 						printf("and it's online from %s s\n", pch);
 					} 
@@ -115,6 +120,17 @@ int main (int argc, char* argv[]) {
 				s.type = TYPE2;
 				strncpy(s.payload,p,strlen(p) - 1);
 				send(sockfd,&s,sizeof(s),0);
+			}
+			
+			if (strncmp(p,"message",strlen(p)) == 0) {
+				p = strtok(NULL," ");
+				memset(&s,0,sizeof(msg));
+				s.type = TYPE3;
+				strncpy(s.payload,p,strlen(p) - 1);
+				
+				p = strtok(NULL," ");
+				outbox.push(std::pair<char*,char*>(s.payload,p));
+				send(sockfd,&s,sizeof(s),0);				
 			}
 		}
 	}

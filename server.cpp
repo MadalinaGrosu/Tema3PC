@@ -11,6 +11,16 @@ int containsClient(std::list<client> clients, char* name) {
 	return 1;
 }
 
+client getClient(std::list<client> clients, char* name) {
+	for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
+		if (strncmp((*it).name,name,strlen(name) - 1) == 0) {
+			return *it;
+		}
+	}
+	
+	return *clients.end();
+}
+
 // ./server port_server
 int main(int argc, char *argv[]) {
 	time_t current_time; // timpul curent
@@ -126,6 +136,36 @@ int main(int argc, char *argv[]) {
 									std::string mesaj = buff.str();
 									memcpy(buffer.payload,mesaj.c_str(),mesaj.size());
 									send(i, &buffer, sizeof(msg), 0);
+									break;
+								}
+								case TYPE2 :
+								{
+									// send info client
+									//printf("Buffer: %s\n",buffer.payload);
+									cli = getClient(clients,buffer.payload);
+	
+									
+									if (strncmp(cli.name,buffer.payload,strlen(buffer.payload) - 1) == 0) {										
+										memset(&buffer,0,sizeof(msg));
+										buffer.type = TYPE2;
+										buffer.len = 0;
+										
+										time(&current_time);
+										current_time -= cli.time;
+										
+										// trimit datele despre client in formatul
+										// port timp_scurs
+										std::stringstream buff;
+										buff << cli.name << " " << cli.port << " " << current_time;
+										
+										std::string mesaj = buff.str();
+										memcpy(buffer.payload,mesaj.c_str(),mesaj.size());
+																
+									} else {
+										buffer.type = TYPE2;
+										buffer.len = 1;
+									}
+									send(i,&buffer, sizeof(msg), 0);
 									break;
 								}
 							}

@@ -80,6 +80,20 @@ int main (int argc, char* argv[]) {
 					}
 						
 				}
+				
+				if (s.type == TYPE2) {
+					if (s.len == 0) {
+						char *pch = strtok(s.payload, " ");
+						printf("Client %s ",pch);
+						pch = strtok(NULL," ");
+						printf("listens on port %s ", pch);
+						pch = strtok(NULL, " ");
+						printf("and it's online from %s s\n", pch);
+					} 
+					if (s.len == 1) {
+						printf("Client %s it is not online!\n",s.payload);
+					}
+				}
 		}
 		
 		if (FD_ISSET(0,&tmp_fds)) {
@@ -88,12 +102,20 @@ int main (int argc, char* argv[]) {
 			printf("%s\n",cmd);
 			char *p = cmd;
 			p = strtok(cmd," ");
-			if (strcmp(p,"listclients")) {
+			printf("%s\n",p);
+			if (strstr(p,"listclients")) {
 				memset(&s,0,sizeof(msg));
 				s.type = TYPE1;
 				send(sockfd,&s,sizeof(s),0);
 			}
 			
+			if (strstr(p,"infoclient")) {
+				p = strtok(NULL," ");
+				memset(&s,0,sizeof(msg));
+				s.type = TYPE2;
+				strncpy(s.payload,p,strlen(p) - 1);
+				send(sockfd,&s,sizeof(s),0);
+			}
 		}
 	}
 			

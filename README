@@ -1,0 +1,79 @@
+*** GROSU Madalina - Andreea  324CB  ***
+*** Tema 3 Protocoale de Comunicatii ***
+
+Pentru a transmite mesaje am 
+folosit o structura de date msg care are campurile
+-type
+-len
+-payload
+
+Client:
+	
+Clientul trimite serverului urmatoarele mesaje:
+0) hello
+	-la conectare clientul trimite serverului datele
+lui: nume si portul pe care asculta conexiuni; 
+type = TYPE0;
+len = listen_port_client;
+payload = nume_client;
+1) listclients
+	- cerere pentru lista cu toti clientii conectati la 
+server;
+type = TYPE1;
+2) infoclient <nume_client>
+	- cerere pentru informatii suplimentare despre un 
+client
+type = TYPE2;
+payload = nume_client;
+3) message <nume_client> <mesaj>
+	- 
+4) broadcast <mesaj>
+	-
+5) sendfile <client_destinatie> <nume_fisier>
+	-
+6) history
+	-
+7) quit
+	-
+Clientul primeste urmatoarele mesaje de la server:
+1) listclients
+	- trimite lista cu numele clientilor conectati la 
+server
+type = TYPE1;
+payload = numele clientiilor separate prin spatiu
+len = numarul clientilor conectati
+2) infoclient <nume_client>
+	- trimite datele despre un client: nume, ip, port
+si timpul scurs de la conectare
+type = TYPE2;
+payload = "nume_client ip_client listen_port time";
+3) message <nume_client>
+	- 
+4) 
+5)
+6)
+7) quit
+	- clientul se deconecteaza de la server, deoarece se inchide
+serverul;
+type = TYPE7;
+8) disconnect
+	- clientul este deconectat de la server daca mai exista in sistem 
+un alt client cu acelasi nume sau daca serverul primeste comanda kick;
+type = TYPE8;
+
+Clientul primeste urmatoarele mesaje de la alt client:
+-> message <sursa> <mesaj>
+	- primeste de la sursa un mesaj
+-> sendfile
+
+Server:
+	Mesajele trimise catre clienti au fost explicate mai sus.
+	Comenzile primite de la tastatura:
+-> status
+	- afiseaza datele despre toti clientii conectati:
+nume_client listen_port ip_addr
+-> kick <nume_client>
+	- trimite un mesaj de tip disconnect clientului
+-> quit
+	- trimite mesaje de tip quit la toti clientii conectati
+

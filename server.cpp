@@ -219,6 +219,13 @@ int main(int argc, char *argv[]) {
 										send(i,&buffer, sizeof(msg), 0);
 										break;
 									}
+									case TYPE7 :
+									{
+										printf("%s is going offline!\n", buffer.payload);
+										removeClient(clients,i);
+										mymap.erase(i);
+										break;
+									}
 								}
 						}
 					}

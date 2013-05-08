@@ -3,6 +3,7 @@
 #include <stack>
 #include <sstream> 
 #include <queue>
+#include <vector>
 
 void send_message(char *ip_addr, char *port, char *mesaj, char *name) {
 	struct sockaddr_in client_addr;
@@ -12,7 +13,6 @@ void send_message(char *ip_addr, char *port, char *mesaj, char *name) {
 	if (sockfd < 0) {
 		perror("Error opening socket");
 	}
-	//printf("In send_message: ip %s, port %s, mesaj %s\n", ip_addr, port, mesaj);
 	
 	//connect to client
 	client_addr.sin_family = AF_INET;
@@ -181,6 +181,7 @@ int main (int argc, char* argv[]) {
 					
 					p = strtok(NULL,"\n");
 					char *mesaj = p;
+					
 					// trimit mesaj infoclient la server
 					send(sockfd,&s,sizeof(s),0);		
 					memset(&s,0,sizeof(msg));
@@ -197,6 +198,61 @@ int main (int argc, char* argv[]) {
 						send_message(ip, p, mesaj,argv[1]);
 					} else {
 						printf("Client %s is offline!\n", s.payload);
+					}
+				}
+				
+				if (strncmp(p, "broadcast", strlen(p)-1) == 0) {
+					char *mesaj;
+					p = strtok(NULL,"\n");
+					mesaj = p;
+					
+					// trimit cerere listclients
+					memset(&s,0,sizeof(msg));
+					s.type = TYPE1;
+					send(sockfd,&s,sizeof(msg),0);
+					
+					memset(&s,0,sizeof(msg));
+					recv(sockfd,&s,sizeof(msg),0);
+					
+					if (s.len == 0) {
+						printf("There are no clients connected!\n");
+					} else {
+						char *pch;
+						printf("S.payload: %s\n", s.payload);
+						pch = strtok(s.payload," ");
+						msg r;
+						std::vector<char*> clients;
+						
+						while (pch != NULL) {
+							clients.push_back(pch);
+							pch = strtok(NULL," ");
+						}
+						
+						for(i = 0; i < clients.size(); ++i) {
+							if (strcmp(argv[1],clients[i])) {
+								// trimit cerere infoclient
+								r.type = TYPE3;
+								strcpy(r.payload,clients[i]);
+								send(sockfd,&r,sizeof(msg),0);
+								
+								memset(&r,0,sizeof(msg));
+								recv(sockfd,&r,sizeof(msg),0);
+								
+								printf("Payload %s\n", r.payload);
+								
+								if (r.len == 0) {
+									p = strtok(r.payload," "); //nume client
+									p = strtok(NULL," ");	 // ip_client
+									char *ip = p;
+									p = strtok(NULL, " "); //listen_port
+									send_message(ip, p, mesaj,argv[1]);
+								} else {
+									printf("Client %s is offline!\n", pch);
+								} 
+							}
+							memset(&r,0,sizeof(msg));
+						}
+						
 					}
 				}
 				

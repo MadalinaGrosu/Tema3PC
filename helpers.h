@@ -26,7 +26,6 @@
 #define TYPE6 6 // history
 #define TYPE7 7 // quit
 #define TYPE8 8 // disconnect
-#define TYPE9 9
 
 typedef struct {
 	int type;

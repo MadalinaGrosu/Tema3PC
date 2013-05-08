@@ -3,6 +3,7 @@
 #include <sstream> 
 #include <map>
 
+// verifica daca exista deja in sistem un client
 int containsClient(std::list<client> clients, char* name) {
 	for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
 		if (strcmp((*it).name,name) == 0)
@@ -12,6 +13,7 @@ int containsClient(std::list<client> clients, char* name) {
 	return 1;
 }
 
+// intoarce clientul cu numele name din lista
 client getClient(std::list<client> clients, char* name) {
 	for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
 		if (strncmp((*it).name,name,strlen(name) - 1) == 0) {
@@ -22,6 +24,7 @@ client getClient(std::list<client> clients, char* name) {
 	return *clients.end();
 }
 
+// elimina din lista clientul de pe socketul sockfd
 void removeClient(std::list<client> &clients, int sockfd) {
 	for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
 		if ((*it).sockfd == sockfd) {
@@ -99,6 +102,7 @@ int main(int argc, char *argv[]) {
 						mymap.insert(std::pair<int,struct in_addr>(newsockfd,cli_addr.sin_addr));
 						printf("Noua conexiune de la %s, port %d, socket_client %d\n ", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), newsockfd);
 					} else if (i == 0) {
+						// comenzi de la tastatura
 						fgets(payload,MAXLEN,stdin);
 						char *pch = strtok(payload," ");
 						
@@ -108,7 +112,7 @@ int main(int argc, char *argv[]) {
 							
 							if (strncmp(cli.name,pch,strlen(pch)) == 0) {
 								memset(&buffer,0,sizeof(buffer));
-								buffer.type = 8;
+								buffer.type = TYPE8;
 								send(cli.sockfd,&buffer,sizeof(buffer),0);
 							} else {
 								printf("%s is not in the system!\n",pch);
@@ -145,7 +149,7 @@ int main(int argc, char *argv[]) {
 									perror("ERROR in recv");
 								}
 								close(i); 
-								FD_CLR(i, &read_fds); // scoatem din multimea de citire socketul pe care 
+								FD_CLR(i, &read_fds); // scoatem din multimea de citire socketul  
 								removeClient(clients,i);
 								mymap.erase(i);
 							} 

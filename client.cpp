@@ -95,7 +95,7 @@ int main (int argc, char* argv[]) {
 	int port_client, port_server, sockfd, fdmax,n, listen_sockfd, newsockfd, fd;	
 	std::vector<std::pair<int,std::string> > history;
 	struct sockaddr_in serv_addr, cli_addr;
-	char payload[MAXLEN], cmd[25];
+	char cmd[25];
 	
 	msg s;
 	fd_set read_fds;
@@ -123,6 +123,7 @@ int main (int argc, char* argv[]) {
 	if (connect(sockfd,(struct sockaddr*) &serv_addr,sizeof(serv_addr)) < 0) 
         perror("ERROR connecting");   
         
+    // socket pe care primesc cereri de conectare de la alti clienti
     listen_sockfd = socket(AF_INET,SOCK_STREAM,0);
     if (listen_sockfd < 0) {
 		perror("Error opening socket");
@@ -141,12 +142,10 @@ int main (int argc, char* argv[]) {
     FD_SET(listen_sockfd,&read_fds);
     FD_SET(0,&read_fds);
     fdmax = listen_sockfd;
-   // printf("Listen: %i\n", listen_sockfd);
     FD_SET(sockfd,&read_fds);
     
     if (sockfd > fdmax)
 		fdmax = sockfd;
-  //  printf("Sockfd %i\n",sockfd);
     
     listen(listen_sockfd,MAXCLIENTS);
     
@@ -154,7 +153,6 @@ int main (int argc, char* argv[]) {
     s.type = TYPE0;
     memset(s.payload,0,MAXLEN);
     memcpy(s.payload,argv[1], strlen(argv[1]));
-   // printf("nume: %s",s.payload);
     s.len = port_client;
     
     send(sockfd,&s,sizeof(s),0);
@@ -209,12 +207,11 @@ int main (int argc, char* argv[]) {
 						}
 					}
 			} else if (i == 0 && FD_ISSET(0,&tmp_fds)) {
-			//	printf(">");
 				fgets(cmd,MAXLEN,stdin);
-			//	printf("%s\n",cmd);
+		
 				char *p = cmd;
 				p = strtok(cmd," ");
-			//	printf("%s\n",p);
+			
 				if (strstr(p,"listclients")) {
 					memset(&s,0,sizeof(msg));
 					s.type = TYPE1;
@@ -243,14 +240,10 @@ int main (int argc, char* argv[]) {
 					memset(&s,0,sizeof(msg));
 					recv(sockfd,&s,sizeof(msg),0);
 					if (s.len == 0) {
-				//		printf("%s recieved payload: %s\n", argv[1], s.payload);
 						p = strtok(s.payload," "); //nume client
 						p = strtok(NULL," ");	 // ip_client
-				//		printf("%s\n", p);
 						char *ip = p;
-				//		printf("Ip: %s\n", ip);
 						p = strtok(NULL, " "); //listen_port
-				//		printf("Port: %s, IP: %s\n", p, ip);
 						send_message(ip, p, mesaj,argv[1]);
 					} else {
 						printf("Client %s is offline!\n", s.payload);
@@ -259,7 +252,6 @@ int main (int argc, char* argv[]) {
 				
 				if (strncmp(p, "broadcast", strlen(p)-1) == 0) {
 					char *mesaj;
-					p = strtok(NULL,"\n");
 					mesaj = p;
 					
 					// trimit cerere listclients
@@ -274,7 +266,6 @@ int main (int argc, char* argv[]) {
 						printf("There are no clients connected!\n");
 					} else {
 						char *pch;
-						printf("S.payload: %s\n", s.payload);
 						pch = strtok(s.payload," ");
 						msg r;
 						std::vector<char*> clients;
@@ -293,8 +284,6 @@ int main (int argc, char* argv[]) {
 								
 								memset(&r,0,sizeof(msg));
 								recv(sockfd,&r,sizeof(msg),0);
-								
-								printf("Payload %s\n", r.payload);
 								
 								if (r.len == 0) {
 									p = strtok(r.payload," "); //nume client
@@ -377,7 +366,6 @@ int main (int argc, char* argv[]) {
 						
 						printf("Noua conexiune de la %s, port %d, socket_client %d\n ", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), newsockfd);
 			} else if (FD_ISSET(i,&tmp_fds)) {
-			//	printf("i %i\n", i);
 				memset(&s,0,sizeof(msg));
 				if ((n = recv(i, &s, sizeof(s), 0)) <= 0) {
 								if (n == 0) {
@@ -391,7 +379,7 @@ int main (int argc, char* argv[]) {
 				} else {
 					if (s.type == TYPE3) {
 						history.push_back(std::make_pair(0,std::string(s.payload))); // adaug in history mesajul primit
-						//printf("Buffered: %s\n", history[history.size() - 1].second);
+						
 						time_t rawtime;
 						struct tm * timeinfo;
 						time (&rawtime);
@@ -399,10 +387,10 @@ int main (int argc, char* argv[]) {
 						
 						printf("[%2i:%2i]",timeinfo->tm_hour, timeinfo->tm_min);
 						
-						char *pch = strtok(s.payload," ");
+						char *pch = strtok(s.payload," "); // nume client sursa
 						printf("[%s] ",pch);
-						pch = strtok(NULL,"\0");
-						printf("%s\n",pch);
+						pch = strtok(NULL,"\0"); // mesaj
+						printf("%s\n",pch); 
 					}
 					
 					if (s.type == TYPE5) {
@@ -411,9 +399,8 @@ int main (int argc, char* argv[]) {
 							history.push_back(std::make_pair(1,std::string(s.payload))); 
 							char *pch = strtok(s.payload," ");
 							
-							//printf("[%s] ",pch);
 							pch = strtok(NULL,"\0");
-							strcat(pch,"_recv");
+							strcat(pch,"_primit");
 							printf("%s\n",pch);
 							
 							fd = open(pch, O_CREAT | O_WRONLY | O_TRUNC, 0644);

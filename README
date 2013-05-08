@@ -26,15 +26,13 @@ client
 type = TYPE2;
 payload = nume_client;
 3) message <nume_client> <mesaj>
-	- 
-4) broadcast <mesaj>
-	-
-5) sendfile <client_destinatie> <nume_fisier>
-	-
-6) history
-	-
-7) quit
-	-
+	- identic cu mesajul infoclient
+type = TYPE3;
+payload = nume_client;
+4) quit
+	- anunta serverul ca se va inchide
+type = TYPE7;
+
 Clientul primeste urmatoarele mesaje de la server:
 1) listclients
 	- trimite lista cu numele clientilor conectati la 
@@ -48,23 +46,33 @@ si timpul scurs de la conectare
 type = TYPE2;
 payload = "nume_client ip_client listen_port time";
 3) message <nume_client>
-	- 
-4) 
-5)
-6)
-7) quit
+	- identic cu mesajul infoclient
+4) quit
 	- clientul se deconecteaza de la server, deoarece se inchide
 serverul;
 type = TYPE7;
-8) disconnect
+5) disconnect
 	- clientul este deconectat de la server daca mai exista in sistem 
 un alt client cu acelasi nume sau daca serverul primeste comanda kick;
 type = TYPE8;
 
 Clientul primeste urmatoarele mesaje de la alt client:
 -> message <sursa> <mesaj>
-	- primeste de la sursa un mesaj
--> sendfile
+	- primeste de la sursa un mesaj si il arhiveaza
+type = TYPE3;
+payload = nume_sursa mesaj
+-> broadcast mesaj
+	- acest mesaj a fost trimis tuturor clientilor conectati
+la server
+type = TYPE4;
+payload = nume_sursa mesaj
+-> sendfile <sursa> <nume_fisier>
+	- primeste de la sursa un fisier si arhiveaza
+type = TYPE5;
+len = |-1, cand se trimite numele fisierului
+	  | 0, cand s-a terminat de trimis fisierul
+	  | > 0 , cand mai sunt date de primit
+payload = datele din fisier
 
 Server:
 	Mesajele trimise catre clienti au fost explicate mai sus.
@@ -76,4 +84,25 @@ nume_client listen_port ip_addr
 	- trimite un mesaj de tip disconnect clientului
 -> quit
 	- trimite mesaje de tip quit la toti clientii conectati
+
+Algoritm pentru trimiterea unui mesaj:
+	-> clientul sursa trimite serverului cerere infoclient client_dest
+	-> serverul raspunde cererii
+	-> clientul sursa se conecteaza la client_dest
+	-> trimite mesajul
+	-> inchide conexiunea
+Algoritm pentru broadcast
+	-> clientul sursa trimite serverului cerere listclients
+	-> serverul raspunde cererii
+	-> pentru fiecare client se aplica algoritmul de trimitere
+	al unui mesaj
+Algoritm pentru trimiterea unui fisier
+	-> clientul sursa trimite serverului cerere infoclient client_dest
+	-> serverul raspunde  cererii
+	-> clientul sursa se conecteaza la client_dest
+	-> clientul sursa trimite clientului destinatie numele fisierului
+	si numele sau
+	-> clientul sursa trimite restul fisierului
+	-> clientul sursa trimite eof
+ 
 

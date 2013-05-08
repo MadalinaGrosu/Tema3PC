@@ -3,7 +3,10 @@
 #include <stack>
 #include <sstream> 
 #include <queue>
+#include <string>
 #include <vector>
+#include <iostream>
+#include <fcntl.h>
 
 void send_message(char *ip_addr, char *port, char *mesaj, char *name) {
 	struct sockaddr_in client_addr;
@@ -26,18 +29,71 @@ void send_message(char *ip_addr, char *port, char *mesaj, char *name) {
     strcpy(s.payload,name);
     s.payload[strlen(name)] = ' ';
     strncpy(s.payload + strlen(name)+1, mesaj, strlen(mesaj));
-  //printf("Payload: %s\n", s.payload);
-  //printf("Sockfd %i\n", sockfd);
+    
     send(sockfd,&s,sizeof(s),0);
     
     close(sockfd);
 	
 }
 
+void send_file(char *ip_addr, char *port, char *num_fis, char *name) {
+	int fd; //file descriptor
+	// deschid fisierul
+	fd = open(num_fis,O_RDONLY);
+	if(fd < 0) {
+		perror("Client sender: Failed to open file with name");
+		return ;
+	}
+	
+	struct sockaddr_in client_addr;
+	msg s;
+	int n;
+	
+	int sockfd = socket(AF_INET,SOCK_STREAM,0);
+	if (sockfd < 0) {
+		perror("Error opening socket");
+	}
+	
+	//connect to client
+	client_addr.sin_family = AF_INET;
+	client_addr.sin_port = htons(atoi(port));
+	inet_aton(ip_addr,&client_addr.sin_addr);
+	
+	if (connect(sockfd,(struct sockaddr*) &client_addr,sizeof(client_addr)) < 0) 
+        perror("ERROR connecting");   
+	
+	// send name file
+	s.type = TYPE5;
+	s.len = -1; 
+	memcpy(s.payload,name,strlen(name));
+	s.payload[strlen(name)] = ' ';
+	memcpy(s.payload + strlen(name) + 1, num_fis, strlen(num_fis));
+	
+	send(sockfd,&s,sizeof(s),0);
+	memset(&s,0,sizeof(msg));
+	
+	while ((n = read(fd,s.payload,MAXLEN)) > 0) {
+		s.type = TYPE5;
+		s.len = n;
+		
+		send(sockfd,&s,sizeof(s),0);
+		memset(&s,0,sizeof(msg));
+	}
+	
+	// send eof message
+	s.type = TYPE5;
+	s.len = 0;
+	send(sockfd,&s,sizeof(s),0);
+	
+	close(sockfd);
+	
+	
+}
+
 // ./client nume_client port_client ip_server port_server
 int main (int argc, char* argv[]) {
-	int port_client, port_server, sockfd, fdmax,n, listen_sockfd, newsockfd;	
-	std::stack<msg> histoy;
+	int port_client, port_server, sockfd, fdmax,n, listen_sockfd, newsockfd, fd;	
+	std::vector<std::pair<int,std::string> > history;
 	struct sockaddr_in serv_addr, cli_addr;
 	char payload[MAXLEN], cmd[25];
 	
@@ -153,9 +209,9 @@ int main (int argc, char* argv[]) {
 						}
 					}
 			} else if (i == 0 && FD_ISSET(0,&tmp_fds)) {
-				printf(">");
+			//	printf(">");
 				fgets(cmd,MAXLEN,stdin);
-				printf("%s\n",cmd);
+			//	printf("%s\n",cmd);
 				char *p = cmd;
 				p = strtok(cmd," ");
 			//	printf("%s\n",p);
@@ -263,6 +319,47 @@ int main (int argc, char* argv[]) {
 					send(sockfd,&s,sizeof(msg),0);
 					return 0;
 				}
+				
+				if (strncmp(p,"history",strlen(p) - 1) == 0) {
+					if (history.size() == 0) {
+						printf("Client %s: No history\n", argv[1]);
+					}
+					for (i = history.size() - 1; i >= 0; i--) {
+						std::pair<int,std::string> elem = history[i];
+						
+						if (elem.first == 0) {
+							std::cout << argv[1] << " recieved message from " << elem.second << std::endl;
+						} else {
+							std::cout << argv[1] << " recieved file from " << elem.second << std::endl;
+						}
+					}
+				}
+				
+				if (strncmp(p,"sendfile",strlen(p) - 1) == 0) {
+					p = strtok(NULL," "); // nume client
+					memset(&s,0,sizeof(msg));
+					s.type = TYPE3;
+					strncpy(s.payload,p,strlen(p));
+					
+					p = strtok(NULL,"\n");
+					char *num_fis = p;
+					
+					// trimit mesaj infoclient la server
+					send(sockfd,&s,sizeof(s),0);		
+					memset(&s,0,sizeof(msg));
+					recv(sockfd,&s,sizeof(msg),0);
+					
+					if (s.len == 0) {
+						p = strtok(s.payload," "); //nume client
+						p = strtok(NULL," ");	 // ip_client
+						char *ip = p;
+						p = strtok(NULL, " "); //listen_port
+						send_file(ip, p, num_fis,argv[1]);
+					} else {
+						printf("Client %s is offline!\n", s.payload);
+					}
+				}
+				
 			} else if (i == listen_sockfd && FD_ISSET(i,&tmp_fds)) { 
 						// a venit ceva pe socketul inactiv(cel cu listen) = o noua conexiune
 						// actiunea : accept()
@@ -293,6 +390,8 @@ int main (int argc, char* argv[]) {
 								FD_CLR(i, &read_fds); // scoatem din multimea de citire socketul pe care 
 				} else {
 					if (s.type == TYPE3) {
+						history.push_back(std::make_pair(0,std::string(s.payload))); // adaug in history mesajul primit
+						//printf("Buffered: %s\n", history[history.size() - 1].second);
 						time_t rawtime;
 						struct tm * timeinfo;
 						time (&rawtime);
@@ -304,6 +403,28 @@ int main (int argc, char* argv[]) {
 						printf("[%s] ",pch);
 						pch = strtok(NULL,"\0");
 						printf("%s\n",pch);
+					}
+					
+					if (s.type == TYPE5) {
+						if (s.len == -1) {
+							// recieve name file
+							history.push_back(std::make_pair(1,std::string(s.payload))); 
+							char *pch = strtok(s.payload," ");
+							
+							//printf("[%s] ",pch);
+							pch = strtok(NULL,"\0");
+							strcat(pch,"_recv");
+							printf("%s\n",pch);
+							
+							fd = open(pch, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+							if (fd < 0) { 
+								perror("Client reciever: failed open the file");
+							}
+						} else if (s.len == 0) {
+							close(fd);
+						} else {
+							write(fd,s.payload,s.len);
+						}
 					}
 				} 
 			}
